@@ -1,0 +1,8 @@
+name = "AlgTools"
+uuid = "c46e2e78-5339-41fd-a966-983ff60ab8e7"
+authors = ["Tuomo Valkonen <tuomov@iki.fi>"]
+version = "0.1.0"
+
+[deps]
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
