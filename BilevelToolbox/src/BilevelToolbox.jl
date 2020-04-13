@@ -27,9 +27,10 @@ using ImageTools.Visualise: grayimg, visualise, clip
 # Load local modules
 #####################
 
-include("ImGenerate.jl")
+include("DatasetGen.jl")
+include("Denoise.jl")
 
-using .ImGenerate
+using .DatasetGen
 
 ##############
 # Our exports
@@ -43,7 +44,7 @@ export show_images
 
 struct Experiment
     mod :: Module
-    imgen :: ImGen
+    dataset :: Dataset
     params :: NamedTuple
 end
 
