@@ -98,8 +98,8 @@ function denoise_rof_pdhg(  b :: Image;
             ∇₂!(Δy, x)
             ∇₂ᵀ!(Δx, y) 
             primal = params.λ*norm₂²(x-b)/2 + norm₂₁(Δy)
-            dual = norm₂²(Δx+b)/2
-            value = primal-dual
+            dual = 0.5*params.λ*norm₂²((1/params.λ)*Δx+b)-0.5*params.λ*norm₂²(b)#norm₂²(Δx+b)/2
+            value = dual#primal-dual
             value,x,y
         end
         v
