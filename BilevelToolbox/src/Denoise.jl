@@ -14,8 +14,8 @@ using ImageTools.Gradient
 # Our exports
 ##############
 
-export denoise_rof_pdhg,
-       denoise_tvl1_pdhg
+export  denoise_rof_pdhg,
+        denoise_tvl1_pdhg
 
 #############
 # Data types
