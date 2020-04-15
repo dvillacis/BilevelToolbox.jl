@@ -4,6 +4,8 @@
 
 __precompile__()
 
+using LinearAlgebra
+
 using AlgTools.Util
 using AlgTools.LinkedLists
 using ImageTools.Denoise
@@ -23,12 +25,15 @@ const dataset_params = (
 dataset = generate_dataset(dataset_params.dataset_name,dataset_params)
 
 const bilevel_params = (
-    λ_init = 6.0, # Initial parameter value
+    λ_init = 20.0, # Initial parameter value
     η_1 = 0.3,
     η_2 = 0.9,
     γ_1 = 0.5,
     γ_2 = 2.0,
-    radius_init = 1.0
+    radius_init = 1.0, # Initial trust-region radius
+    H_init = 0.1,   # Initial hessian
+    max_iterations = 100,
+    tol = 1e-3
 )
 
 function lower_level_solver(b :: Image, λ :: Float64)
@@ -51,41 +56,77 @@ function upper_level_cost(x :: Image, x̄ :: Image)
     return norm₂²(x-x̄)/2
 end
 
-function upper_level_gradient(x :: Image, λ :: Float64)
-    return convert(Float64,rand(-1:1))
+function upper_level_gradient(b :: Image, x̄ :: Image, x :: Image, λ :: Float64)
+    # Forward difference gradient approximation
+    x_ = lower_level_solver(b,λ+1e-7)
+    cost =  upper_level_cost(x,x̄)
+    cost_ =  upper_level_cost(x_,x̄)
+    return (cost_-cost)/1e-7
 end
 
-function solve_tr_subproblem(λ :: Float64, radius :: Float64, grad :: Float64)
-    step = -radius*sign(grad)
-    return step
+function solve_tr_subproblem(λ :: Float64, radius :: Float64, grad :: Float64, H :: Float64)
+    # classic Cauchy point calculation
+    s = 1
+    if grad*H*grad > 0
+        s = min(norm(grad)^3/(radius*grad*H*grad),1)
+    end
+    return -s*radius*sign(grad)
+end
+
+function bfgs_update(H,λ,λ_,grad,grad_)
+    s = λ_ - λ
+    Hs = H*s
+    y = grad_ - grad
+    if norm(y) > 0
+        H = H + (y^2)/(y*s) - Hs*Hs/(Hs*s)
+    end
+    return H
 end
 
 
 #######################
 # Nonsmooth Trust Region Algorithm
 #######################
+
+# Algorithm parameters
 λ = bilevel_params.λ_init
 radius = bilevel_params.radius_init
 b = dataset.entries[1].im_noisy
 x̄ = dataset.entries[1].im_true
-for it = 1:10
+H = bilevel_params.H_init
+
+#######################
+# Algorithm Run
+#######################
+
+for it = 1:bilevel_params.max_iterations
+    if radius < bilevel_params.tol
+        break
+    end
     x = lower_level_solver(b,λ)
     cost = upper_level_cost(x,x̄)
-    grad = upper_level_gradient(x,λ)
-    step = solve_tr_subproblem(λ,radius,grad)
+    grad = upper_level_gradient(b,x̄,x,λ)
+    if norm(grad) < bilevel_params.tol
+        break
+    end
+    step = solve_tr_subproblem(λ,radius,grad,H)
     print("$it: \tcost= $cost, λ= $λ, radius= $radius, grad= $grad")
     
     # Quality indicators
-    pred = -grad*step
+    pred = -grad*step - 0.5*step*H*step
     ρ = 0
     if pred > 0
         x_ = lower_level_solver(b,λ+step)
-        cost_ = upper_level_gradient(x,λ+step)
+        cost_ = upper_level_cost(x_,x̄)
         ρ = (cost-cost_)/pred
     end
-    print(", ρ = $ρ\n")
+    print(", H = $H, ρ = $ρ\n")
+
     #Trust-Region radius change
     if ρ > bilevel_params.η_2
+        x_ = lower_level_solver(b,λ+step)
+        grad_ = upper_level_gradient(b,x̄,x_,λ+step)
+        global H = bfgs_update(H,λ,λ+step,grad,grad_)
         global λ += step
         global radius *= bilevel_params.γ_2
     elseif ρ <= bilevel_params.η_1
@@ -94,6 +135,4 @@ for it = 1:10
         global λ += step
         global radius *= bilevel_params.γ_1
     end
-
-
 end

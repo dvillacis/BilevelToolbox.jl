@@ -23,7 +23,7 @@ const dataset_params = (
 
 dataset = generate_dataset(dataset_params.dataset_name,dataset_params)
 
-const λ_range = 1:0.5:50
+const λ_range = 1:0.5:60
 
 costs = Float64[]
 
