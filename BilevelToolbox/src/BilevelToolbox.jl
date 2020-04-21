@@ -21,7 +21,7 @@ using AlgTools.StructTools
 using AlgTools.LinkedLists
 using AlgTools.Comms
 
-using ImageTools.Visualise: grayimg, visualise, clip
+using ImageTools.Visualise
 
 #####################
 # Load local modules
@@ -39,7 +39,8 @@ using .DatasetGen
 # Our exports
 ##############
 
-export run_bilevel_algorithm
+export  Experiment,
+        run_bilevel_algorithm
 
 ###################################
 # Parameterisation and experiments
@@ -48,6 +49,9 @@ export run_bilevel_algorithm
 struct Experiment
     mod :: Module
     dataset :: Dataset
+    lower_level_solver :: Function
+    upper_level_cost :: Function
+    upper_level_gradient :: Function
     params :: NamedTuple
 end
 
@@ -73,16 +77,37 @@ struct LogEntry <: IterableStruct
     ssim_data :: Float64
 end
 
+struct LogEntryHiFi <: IterableStruct
+    iter :: Int
+    v_cumul_true_y :: Float64
+    v_cumul_true_x :: Float64
+end
+
 ###############
 # Main routine
 ###############
 
-function run_bilevel_algorithm(;visualise=true, 
-                                experiments,
-                                kwargs...)
-    for e ∈ experiments
-        x,y,st = e.mod.solve()
+struct State
+    vis :: Union{Channel,Bool,Nothing}
+    start_time :: Union{Real,Nothing}
+    wasted_time :: Real
+    log :: LinkedList{LogEntry}
+    log_hifi :: LinkedList{LogEntryHiFi}
+    aborted :: Bool
+end
+
+function run_bilevel_algorithm(experiment :: Experiment; visualise=true)
+
+    println("Running Bilevel Algorithm: XXXX")
+    st, iterate = initialise_visualisation(false)
+    λ,st = experiment.mod.solve(experiment.dataset, experiment.lower_level_solver, experiment.upper_level_cost, experiment.upper_level_gradient; iterate = iterate, params=experiment.params)
+    if experiment.params.save_results
+        save_prefix = "bilevel_run_" * experiment.dataset.name
+        perffile = save_prefix * ".txt"
+        println("Saving " * perffile)
+        write_log(perffile, st.log, "# params = $(experiment.params)\n")
     end
+    println("Wasted time: $(st.wasted_time)s")
     
 end
 
