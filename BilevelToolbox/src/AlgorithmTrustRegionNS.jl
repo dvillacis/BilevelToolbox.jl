@@ -51,7 +51,7 @@ end
 # Algorithm
 ############
 
-function solve(dataset :: Dataset, lower_level_solver :: Function, upper_level_cost :: Function, upper_level_gradient :: Function; iterate=AlgTools.simple_iterate, params::NamedTuple)
+function solve(dataset :: AbstractDataset, lower_level_solver :: Function, upper_level_cost :: Function, upper_level_gradient :: Function; iterate=AlgTools.simple_iterate, params::NamedTuple)
 
     ################################                                        
     # Extract and set up parameters
@@ -62,14 +62,13 @@ function solve(dataset :: Dataset, lower_level_solver :: Function, upper_level_c
     radius = params.radius_init         # Initial radius value
     B = params.B_init                   # Inital second order approximation
     
-    b = dataset.entries[1].im_noisy     # Define training set 
-    x̄ = dataset.entries[1].im_true      # TODO: the functions should call it instead
+    b,x̄ = get_training_pair(3,dataset)  # TODO: the functions should call it instead
 
 
     ######################
     # Initialise iterates
     ######################
-
+    x = copy(b)
 
     ####################
     # Run the algorithm
@@ -107,7 +106,7 @@ function solve(dataset :: Dataset, lower_level_solver :: Function, upper_level_c
         end
         v
     end
-    return λ, v
+    return λ, x, v
 
 end 
 

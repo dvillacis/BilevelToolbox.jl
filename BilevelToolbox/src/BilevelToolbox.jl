@@ -15,6 +15,7 @@ module BilevelToolbox
 ########################
 
 using GR, Random
+using FileIO
 
 using AlgTools.Util
 using AlgTools.StructTools
@@ -48,7 +49,7 @@ export  Experiment,
 
 struct Experiment
     mod :: Module
-    dataset :: Dataset
+    dataset :: AbstractDataset
     lower_level_solver :: Function
     upper_level_cost :: Function
     upper_level_gradient :: Function
@@ -98,14 +99,20 @@ end
 
 function run_bilevel_algorithm(experiment :: Experiment; visualise=true)
 
-    println("Running Bilevel Algorithm: XXXX")
+    println("Running Bilevel Algorithm: $experiment")
     st, iterate = initialise_visualisation(false)
-    λ,st = experiment.mod.solve(experiment.dataset, experiment.lower_level_solver, experiment.upper_level_cost, experiment.upper_level_gradient; iterate = iterate, params=experiment.params)
+    λ,x,st = experiment.mod.solve(experiment.dataset, experiment.lower_level_solver, experiment.upper_level_cost, experiment.upper_level_gradient; iterate = iterate, params=experiment.params)
+    finalise_visualisation(st)
     if experiment.params.save_results
+        im_true,im_noisy = get_training_pair(3,experiment.dataset)
         save_prefix = "bilevel_run_" * experiment.dataset.name
         perffile = save_prefix * ".txt"
         println("Saving " * perffile)
         write_log(perffile, st.log, "# params = $(experiment.params)\n")
+        fn = (t, ext) -> "$(save_prefix)_$(t).$(ext)"
+        save(File(format"PNG", fn("true", "png")), grayimg(im_true))
+        save(File(format"PNG", fn("data", "png")), grayimg(im_noisy))
+        save(File(format"PNG", fn("reco", "png")), grayimg(x))
     end
     println("Wasted time: $(st.wasted_time)s")
     

@@ -5,6 +5,7 @@
 module DatasetGen
 
 using ColorTypes: Gray
+using FileIO
 import TestImages
 import QuartzImageIO
 
@@ -22,16 +23,25 @@ Image = Translate.Image
 # Our exports
 ##############
 
-export  Dataset,
+export  AbstractDataset,
+        AbstractEntry,
+        Dataset,
+        DirDataset,
         Entry,
+        DirEntry,
         generate_dataset,
-        generate_synthetic_noise_entry
+        generate_dir_dataset,
+        generate_synthetic_noise_entry,
+        get_training_pair
 
 ##################
 # Data structures
 ##################
 
-struct Entry
+abstract type AbstractDataset end
+abstract type AbstractEntry end
+
+struct Entry <: AbstractEntry
     im_true :: Image
     im_noisy :: Image
     name :: String
@@ -39,12 +49,35 @@ struct Entry
     dynrange :: Float64
 end
 
-struct Dataset
+struct DirEntry <: AbstractEntry
+    im_true :: String
+    im_noisy :: String
+end
+
+struct Dataset <: AbstractDataset
     name :: String
     entries :: Array{Entry,1}
 end
 
-Base.show(io::IO, ::Type{Entry}) = print(io,"this is an entry")
+struct DirDataset <: AbstractDataset
+    name :: String
+    path :: String
+    entries :: Array{DirEntry,1}
+end
+
+function Base.show(io::IO, e::Entry)
+    print(io,"
+        name: $(e.name)
+        dim: $(e.dim)
+    ")
+end
+
+function Base.show(io::IO, e::DirEntry)
+    print(io,"
+        im_true: $(e.im_true)
+        im_noisy: $(e.im_noisy)
+    ")
+end
 
 ##################
 # Synthetic noise single dataset
@@ -77,6 +110,40 @@ function generate_dataset(imname :: String, params :: NamedTuple)
         push!(entries,entry)
     end
     return Dataset(dataset_name,entries)
+end
+
+
+function generate_dir_dataset(dataset_path :: String, params :: NamedTuple)
+    entries = DirEntry[]
+    if isdir(dataset_path)
+        for (root,dirs,files) in walkdir(dataset_path)
+            for file in files
+                if occursin(params.true_regex,file)
+                    im_true = file
+                    num = split(file,"_")[1]
+                    ext = split(file,".")[end]
+                    im_noisy = num*"_"*params.noisy_regex*"."*ext
+                    entry = DirEntry(im_true,im_noisy)
+                    push!(entries,entry)
+                end
+            end
+        end
+        return DirDataset(params.dataset_name,dataset_path,entries)
+    else
+        println("dataset_path does not exists. Exiting...")
+    end
+end
+
+function get_training_pair(idx :: Integer, dataset::Dataset)
+    entry = dataset.entries[idx]
+    return (entry.im_true,entry.im_noisy)
+end
+
+function get_training_pair(idx :: Integer, dataset::DirDataset)
+    entry = dataset.entries[idx]
+    im_true = Float64.(load(dataset.path*"/"*entry.im_true))
+    im_noisy = Float64.(load(dataset.path*"/"*entry.im_noisy))
+    return (im_true,im_noisy)
 end
 
 end

@@ -18,13 +18,14 @@ using BilevelToolbox.AlgorithmTrustRegionNS
 
 Image = Array{Float64,2}
 
-const dataset_params = (
-    dataset_name = "lena_gray_256",
-    noise_level = 0.1,
-    num_entries = 1
+const dataset_dir_params = (
+    dataset_path = "../../datasets/circle",
+    dataset_name = "circle",
+    true_regex = "circle_original",
+    noisy_regex = "circle_noisy"
 )
 
-dataset = generate_dataset(dataset_params.dataset_name,dataset_params)
+dataset = generate_dir_dataset(dataset_dir_params.dataset_path,dataset_dir_params)
 
 const bilevel_params = (
     λ_init = 20.0, # Initial parameter value
@@ -35,7 +36,7 @@ const bilevel_params = (
     radius_init = 1.0, # Initial trust-region radius
     B_init = 0.1,   # Initial hessian
     verbose_iter = 1,
-    maxiter = 10,
+    maxiter = 100,
     tol = 1e-3,
     save_iterations = false,
     save_results = true
