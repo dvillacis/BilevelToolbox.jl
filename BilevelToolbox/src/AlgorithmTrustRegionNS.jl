@@ -8,13 +8,16 @@ module AlgorithmTrustRegionNS
 
 using LinearAlgebra
 using Printf
+using ColorTypes: Gray
 
 using AlgTools.Util
 import AlgTools.Iterate
 using ImageTools.Gradient
 using ImageTools.Translate
+using ImageTools.Visualise
 
 using BilevelToolbox.DatasetGen
+using BilevelToolbox.BilevelIterate
 
 ###############################################
 # Types (several imported from ImageTools.Translate)
@@ -62,7 +65,7 @@ function solve(dataset :: AbstractDataset, lower_level_solver :: Function, upper
     radius = params.radius_init         # Initial radius value
     B = params.B_init                   # Inital second order approximation
     
-    b,x̄ = get_training_pair(3,dataset)  # TODO: the functions should call it instead
+    x̄,b = get_training_pair(1,dataset)  # TODO: the functions should call it instead
 
 
     ######################
@@ -102,7 +105,7 @@ function solve(dataset :: AbstractDataset, lower_level_solver :: Function, upper
         # Give function value if needed
         ################################
         v = verbose() do            
-            cost, λ, radius, grad, B, ρ
+            cost, λ, radius, grad, B, ρ, x
         end
         v
     end

@@ -8,6 +8,8 @@ using LinearAlgebra
 
 using AlgTools.Util
 using AlgTools.LinkedLists
+using AlgTools.StructTools
+using AlgTools.Iterate
 using ImageTools.Denoise
 using ImageTools.Visualise
 
@@ -27,15 +29,15 @@ const dataset_params = (
 dataset = generate_dataset(dataset_params.dataset_name,dataset_params)
 
 const bilevel_params = (
-    λ_init = 20.0, # Initial parameter value
+    λ_init = 1.0, # Initial parameter value
     η_1 = 0.3,
     η_2 = 0.9,
     γ_1 = 0.5,
     γ_2 = 2.0,
-    radius_init = 1.0, # Initial trust-region radius
+    radius_init = 0.5, # Initial trust-region radius
     B_init = 0.1,   # Initial hessian
     verbose_iter = 1,
-    maxiter = 10,
+    maxiter = 30,
     tol = 1e-3,
     save_iterations = false,
     save_results = true
@@ -51,10 +53,10 @@ function lower_level_solver(b :: Image, λ :: Float64)
         save_iterations = false,
         verbose = false
     )
-    st, iterate = initialise_visualisation(false)
+    iterate = curry(simple_iterate)
     # Denoise image
     x,y,st = denoise_rof_pdhg(b; xinit=b, iterate=iterate, params=denoise_params)
-    finalise_visualisation(st)
+
     return x
 end
 

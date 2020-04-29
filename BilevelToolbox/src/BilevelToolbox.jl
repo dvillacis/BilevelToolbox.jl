@@ -30,11 +30,13 @@ using ImageTools.Visualise
 
 include("DatasetGen.jl")
 include("Denoise.jl")
+include("BilevelIterate.jl")
 include("AlgorithmTrustRegionNS.jl")
 
 import .AlgorithmTrustRegionNS
 
 using .DatasetGen
+using .BilevelIterate
 
 ##############
 # Our exports
@@ -84,27 +86,41 @@ struct LogEntryHiFi <: IterableStruct
     v_cumul_true_x :: Float64
 end
 
+####################
+# Launcher routines
+####################
+
+function initialise_bilevel_visualisation(visualise; iterator=bilevel_iterate)
+    # Create visualisation
+    if visualise
+        rc = Channel(1)
+        visproc = Threads.@spawn bg_visualise(rc)
+        bind(rc, visproc)
+        vis = rc
+    else
+        vis = false
+        visproc = nothing
+    end
+
+    st = BilevelState(vis, visproc, nothing, 0.0, nothing)
+    iterate = curry(bilevel_iterate, st)
+
+    return st, iterate
+end
+
 ###############
 # Main routine
 ###############
 
-struct State
-    vis :: Union{Channel,Bool,Nothing}
-    start_time :: Union{Real,Nothing}
-    wasted_time :: Real
-    log :: LinkedList{LogEntry}
-    log_hifi :: LinkedList{LogEntryHiFi}
-    aborted :: Bool
-end
-
 function run_bilevel_algorithm(experiment :: Experiment; visualise=true)
 
     println("Running Bilevel Algorithm: $experiment")
-    st, iterate = initialise_visualisation(false)
+
+    st,iterate = initialise_bilevel_visualisation(true)
     λ,x,st = experiment.mod.solve(experiment.dataset, experiment.lower_level_solver, experiment.upper_level_cost, experiment.upper_level_gradient; iterate = iterate, params=experiment.params)
     finalise_visualisation(st)
     if experiment.params.save_results
-        im_true,im_noisy = get_training_pair(3,experiment.dataset)
+        im_true,im_noisy = get_training_pair(1,experiment.dataset)
         save_prefix = "bilevel_run_" * experiment.dataset.name
         perffile = save_prefix * ".txt"
         println("Saving " * perffile)
