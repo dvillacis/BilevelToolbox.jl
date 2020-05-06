@@ -1,6 +1,5 @@
 .vscode
 *.pdf
 *.tex
-*.png
 *.txt
 .DS_Store
