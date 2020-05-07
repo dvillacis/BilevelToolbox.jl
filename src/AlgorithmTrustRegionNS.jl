@@ -27,6 +27,67 @@ Image = Translate.Image
 
 
 ############
+# DOGBOX
+############
+
+"""
+Find intersection of trust region bounds and initial bounds
+"""
+function find_intersection(x,tr_bounds, lb,ub)
+    lb_centered = lb - x
+    ub_centered = ub - x
+
+    lb_total = max.(lb_centered, -tr_bounds)
+    ub_total = min.(ub_centered, tr_bounds)
+
+    orig_l = lb_total .== lb_centered
+    orig_u = ub_total .== ub_centered
+
+    tr_l = lb_total .== -tr_bounds
+    tr_u = ub_total .== tr_bounds
+
+    return lb_total, ub_total, orig_l, orig_u, tr_l, tr_u
+end
+
+"""
+Check if a point lies within bounds
+"""
+function in_bounds(x, lb, ub)
+    return all((x .>= lb) .& (x .<= ub))
+end
+
+"""
+Compute a min step required to reach a bound.
+This function computes a positive scalar t, such that x + s*t is on the bound
+"""
+function step_size_to_bound(x,s,lb,ub)
+    non_zero = findall(s .!= 0)
+    s_non_zero = s[non_zero]
+    steps = zeros(size(x)...)
+    steps[non_zero] = max.((lb - x)[non_zero]/s_non_zero, (ub - x)[non_zero]/s_non_zero)
+    min_step = min(steps)
+    return min_step, steps .== min_step .* sign.(s)
+end
+
+"""
+Find the dogleg step in a rectangular region
+"""
+function dogleg_step(x, newton_step, g, a, b, tr_bounds, lb, ub)
+
+    lb_total, ub_total, orig_l, orig_u, tr_l, tr_u = find_intersection(x,tr_bounds,lb,ub)
+    
+    bound_hits = zeros(size(x)...)
+    if in_bounds(newton_step, lb_total, ub_total)
+        return newton_step, bound_hits, false # If newton step satisfies bounds, then take it!
+    end
+
+    to_bounds, _ = step_size_to_bound(zeros(size(x)),-g, lb_total, ub_total)
+
+
+end
+
+
+############
 # Auxiliary functions
 ############
 
